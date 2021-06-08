@@ -20,11 +20,11 @@ for N in range(natoms):
         Y = data[:, M]
 
         # Calculamos los vectores promedio del total de frames
-        X_mean = np.array([ np.mean(X.T[0]), np.mean(X.T[1]), np.mean(X.T[2]) ])
-        Y_mean = np.array([ np.mean(Y.T[0]), np.mean(Y.T[1]), np.mean(Y.T[2]) ])
-
+        XY = np.diag(np.inner(X, Y))
+        XX = np.diag(np.inner(X, X))
+        YY = np.diag(np.inner(Y, Y))
         # Ecuación 1. Coeficiente de correlación de Pearson  
-        r =  np.dot(X_mean, Y_mean) / (np.linalg.norm(X_mean) * np.linalg.norm(Y_mean))
+        r =  np.mean(XY) / (np.sqrt(np.mean(XX)) * np.sqrt(np.mean(YY)))
 
         corr_matrix[N, M] = abs(r)
 
