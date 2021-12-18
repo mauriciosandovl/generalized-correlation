@@ -33,7 +33,7 @@ def mi_knn(data, N, M, n_neighbors=3):
         nx_p = 0
         ny_p = 0
         for q in XY:
-            xnorm = np.linalg.norm(np.array(p[:3]) - np.array(q[:3]), ord=np.inf)	
+            xnorm = np.linalg.norm(np.array(p[:3]) - np.array(q[:3]), ord=np.inf)
             ynorm = np.linalg.norm(np.array(p[3:]) - np.array(q[3:]), ord=np.inf)
             if xnorm < nbr_dist:
                 nx_p += 1

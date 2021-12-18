@@ -5,7 +5,7 @@ import numpy as np
 
 start_time = time.time()
 
-data = np.load('trj_displacement.npy')#np.load(str(sys.argv[1]))
+data = np.load('trj_displacement_new.npy')#np.load(str(sys.argv[1]))
 nframes = data.shape[0] # Número de frames o conformaciones 
 natoms = data.shape[1] # Número de átomos
 
@@ -23,6 +23,7 @@ for N in range(natoms):
         XY = np.diag(np.inner(X, Y))
         XX = np.diag(np.inner(X, X))
         YY = np.diag(np.inner(Y, Y))
+
         # Ecuación 1. Coeficiente de correlación de Pearson  
         r =  np.mean(XY) / (np.sqrt(np.mean(XX)) * np.sqrt(np.mean(YY)))
 
@@ -30,6 +31,6 @@ for N in range(natoms):
 
 
 # Guardamos la matriz resultante en un archivo .npy
-np.save('pearson_matrix.npy', corr_matrix)
+np.save('pearson_matrix_new.npy', corr_matrix)
 
 print('--- %s seconds ---' % (time.time() - start_time))

@@ -12,7 +12,7 @@ def frame(t, X):
 
 start_time = time.time()
 
-data = np.load('trj_displacement.npy')#np.load(str(sys.argv[1]))
+data = np.load('trj_displacement_new.npy')#np.load(str(sys.argv[1]))
 nframes = data.shape[0] # Nuber of frames
 natoms = data.shape[1] # Number of atoms
 
@@ -52,6 +52,7 @@ for N in range(natoms):
 
 
 # Guardamos la matriz resultante en un archivo .npy
-np.save('linear_info_matrix.npy', corr_matrix)
+np.save('linear_info_matrix_new.npy', corr_matrix)
 
 print('--- %s seconds ---' % (time.time() - start_time))
+
