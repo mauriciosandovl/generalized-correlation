@@ -3,10 +3,9 @@ import sys
 import time
 import numpy as np
 import multiprocessing
-from   multiprocessing   import sharedctypes
-from   sklearn.neighbors import KDTree, KernelDensity
+from multiprocessing import sharedctypes
+from sklearn.neighbors import KDTree, KernelDensity
 
-#-----------------------------------------------------------------------------
 
 def count_knn(args):
     def bw(X, dim):
