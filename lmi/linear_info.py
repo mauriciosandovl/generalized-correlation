@@ -7,17 +7,10 @@ the linear mutual information
 
 import sys
 import numpy as np
-from utils import timeit
+from utils import timeit, gen_corr_coef
 
 INPUT_PATH = str(sys.argv[1])
-OUTPUT_PATH = f"./corr_matrix_{sys.argv[0][2:-3]}.npy"
-
-
-def frame_eval(time, frame):
-    """Returns the matrix frame*frame.T for a frame at time t"""
-    time_frame = np.reshape(frame[time], (frame.shape[1], 1))
-
-    return np.matmul(time_frame, time_frame.T)
+OUTPUT_PATH = "./corr_matrix_linear_info.npy"
 
 
 @timeit
@@ -51,9 +44,9 @@ def main():
                 c_j += frame_eval(i, vect_y)
                 c_ij += frame_eval(i, alt_xy)
 
-            c_i = c_i / nframes
-            c_j = c_j / nframes
-            c_ij = c_ij / nframes
+            c_i /= nframes
+            c_j /= nframes
+            c_ij /= nframes
 
             # Equation for Linear Mutual Information
             lmi = 0.5 * (
@@ -63,11 +56,18 @@ def main():
             )
 
             # Generalized correlation coeficient
-            corr = (abs(1 - np.exp((-2 * lmi) / 3))) ** 0.5
+            corr = gen_corr_coef(lmi)
 
             corr_matrix[row, col] = corr
 
     np.save(file=OUTPUT_PATH, arr=corr_matrix)
+
+
+def frame_eval(time, frame):
+    """Returns the matrix frame*frame.T for a frame at time t"""
+    time_frame = np.reshape(frame[time], (frame.shape[1], 1))
+
+    return np.matmul(time_frame, time_frame.T)
 
 
 if __name__ == "__main__":

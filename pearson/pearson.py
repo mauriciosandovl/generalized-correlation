@@ -10,7 +10,7 @@ import numpy as np
 from utils import timeit
 
 INPUT_PATH = str(sys.argv[1])
-OUTPUT_PATH = f"./corr_matrix_{sys.argv[0][2:-3]}.npy"
+OUTPUT_PATH = "./corr_matrix_pearson.npy"
 
 
 @timeit
@@ -20,11 +20,11 @@ def main():
     data = np.load(INPUT_PATH)
 
     # Number of atoms
-    natoms = data.shape[1]
+    num_atoms = data.shape[1]
 
-    corr_matrix = np.zeros((natoms, natoms))
+    corr_matrix = np.zeros((num_atoms, num_atoms))
 
-    for row in range(natoms):
+    for row in range(num_atoms):
         # Compute only diagonal inferior matrix
         for col in range(row):
             # Variables with all conformations of a pair of atoms

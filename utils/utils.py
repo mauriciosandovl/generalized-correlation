@@ -28,8 +28,9 @@ def get_norm(data):
     return norm
 
 
-def gen_corr_coef(data):
+def gen_corr_coef(data, dim=3):
     """Computes generalized correlation coeficient"""
-    corr = (1 - np.exp(-2 * corr_matrix)) ** 0.5
+    corr = (1 - np.exp((-2*data) / dim)) ** 0.5
 
     return corr
+

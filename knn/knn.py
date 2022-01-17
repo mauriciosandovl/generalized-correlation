@@ -9,54 +9,11 @@ import sys
 import numpy as np
 from scipy.special import digamma
 from sklearn.neighbors import NearestNeighbors
-from utils import timeit
+from utils import timeit, gen_corr_coef
 
 NUM_NEIGHBORS = int(3)
 INPUT_PATH = str(sys.argv[1])
-OUTPUT_PATH = f"./corr_matrix_{sys.argv[0][2:-3]}.npy"
-
-
-def mi_knn(data, row, col, base_info, n_neighbors):
-    """Evaluate the mutual information from the number of atoms nx and ny in the
-    neighborhood of the k-nearst neighborhood as developed by Kraskov
-    """
-    vect_x = data[:, row]
-    vect_y = data[:, col]
-    vect_xy = np.hstack((vect_x, vect_y))
-
-    # Define the model and fit data. Chebyshev metric corresponds to infinity norm
-    n_neighbors = NUM_NEIGHBORS
-    nbrs = NearestNeighbors(n_neighbors=n_neighbors+1, metric="chebyshev")
-    nbrs.fit(vect_xy)
-
-    # Evaluate the distance to the k-nearest neighbor for each point
-    distances, _ = nbrs.kneighbors(vect_xy)
-    kth_nbr_dist = distances[:, -1]
-
-    # Initialize variables to count the number of atoms in neighborhood
-    nx = np.array([])
-    ny = np.array([])
-
-    for i, p in enumerate(vect_xy):
-        nbr_dist = kth_nbr_dist[i]
-        nx_p = 0
-        ny_p = 0
-        for q in vect_xy:
-            xnorm = np.linalg.norm(np.array(p[:3]) - np.array(q[:3]), ord=np.inf)
-            ynorm = np.linalg.norm(np.array(p[3:]) - np.array(q[3:]), ord=np.inf)
-            if xnorm < nbr_dist:
-                nx_p += 1
-
-            elif ynorm < nbr_dist:
-                ny_p += 1
-
-        nx = np.append(nx, nx_p)
-        ny = np.append(ny, ny_p)
-
-    # Kraskov equation for estimating mutual information
-    mutual_info = base_info - np.mean(digamma(nx + 1) + digamma(ny + 1))
-
-    return max(mutual_info, 0)
+OUTPUT_PATH = "./corr_matrix_knn.npy"
 
 
 @timeit
@@ -75,12 +32,54 @@ def main():
     for row in range(num_atoms):
         # Compute only inferior diagonal matrix
         for col in range(row):
-            corr_matrix[row, col] = mi_knn(data, row, col, base_info)
+            corr_matrix[row, col] = mi_knn(data, row, col, base_info, NUM_NEIGHBORS)
 
     # Generalized correlation coeficient
-    corr_matrix = (1.0 - np.exp(-2.0 / 3.0 * corr_matrix)) ** 0.5
+    corr_matrix = gen_corr_coef(corr_matrix)
 
     np.save(file=OUTPUT_PATH, arr=corr_matrix)
+
+
+def mi_knn(data, row, col, base_info, n_neighbors=3):
+    """Evaluate the mutual information from the number of atoms nx and ny in the
+    neighborhood of the k-nearst neighborhood as developed by Kraskov
+    """
+    vect_x = data[:, row]
+    vect_y = data[:, col]
+    vect_xy = np.hstack((vect_x, vect_y))
+
+    # Define the model and fit data. Chebyshev metric corresponds to infinity norm
+    n_neighbors = NUM_NEIGHBORS
+    nbrs = NearestNeighbors(n_neighbors=n_neighbors + 1, metric="chebyshev")
+    nbrs.fit(vect_xy)
+
+    # Evaluate the distance to the k-nearest neighbor for each point
+    distances, _ = nbrs.kneighbors(vect_xy)
+    kth_nbr_dist = distances[:, -1]
+
+    # Initialize variables to count the number of atoms in neighborhood
+    nbrs_x = np.array([])
+    nbrs_y = np.array([])
+
+    for i, p in enumerate(vect_xy):
+        nbr_dist = kth_nbr_dist[i]
+        nbrs_x_p, nbrs_y_p = 0, 0
+        for q in vect_xy:
+            xnorm = np.linalg.norm(np.array(p[:3]) - np.array(q[:3]), ord=np.inf)
+            ynorm = np.linalg.norm(np.array(p[3:]) - np.array(q[3:]), ord=np.inf)
+            if xnorm < nbr_dist:
+                nbrs_x_p += 1
+
+            elif ynorm < nbr_dist:
+                nbrs_y_p += 1
+
+        nbrs_x = np.append(nbrs_x, nbrs_x_p)
+        nbrs_y = np.append(nbrs_y, nbrs_y_p)
+
+    # Kraskov equation for estimating mutual information
+    mutual_info = base_info - np.mean(digamma(nbrs_x + 1) + digamma(nbrs_y + 1))
+
+    return max(mutual_info, 0)
 
 
 if __name__ == "__main__":
