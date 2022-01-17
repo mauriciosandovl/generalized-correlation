@@ -1,38 +1,47 @@
 #!/usr/bin/env python
-import time
-import numpy as np
-import matplotlib.pyplot as plt
-from scipy.special import digamma
-from sklearn.neighbors import NearestNeighbors, KDTree, KernelDensity
 
-def mi_knn(data, N, M, n_neighbors=3):
-    """ 
-    Realiza la estimacion de la informacion mutua a partir del conteo del numero
-    de atomos nx y ny en la vecindad del k-esimo vecino mas cercano descrito en
-    Kraskov
+"""
+Module to evaluate the correlation matrix of the trajectory of a protein using
+the k-nearest neighbor method
+"""
+
+import sys
+import numpy as np
+from scipy.special import digamma
+from sklearn.neighbors import NearestNeighbors
+from utils import timeit
+
+NUM_NEIGHBORS = int(3)
+INPUT_PATH = str(sys.argv[1])
+OUTPUT_PATH = f"./corr_matrix_{sys.argv[0][2:-3]}.npy"
+
+
+def mi_knn(data, row, col, base_info, n_neighbors):
+    """Evaluate the mutual information from the number of atoms nx and ny in the
+    neighborhood of the k-nearst neighborhood as developed by Kraskov
     """
-    X = data[:, N]
-    Y = data[:, M]
-    XY = np.hstack((X, Y))
+    vect_x = data[:, row]
+    vect_y = data[:, col]
+    vect_xy = np.hstack((vect_x, vect_y))
 
     # Define the model and fit data. Chebyshev metric corresponds to infinity norm
-    nbrs = NearestNeighbors(n_neighbors=k+1, metric='chebyshev')
-    nbrs.fit(XY)
+    n_neighbors = NUM_NEIGHBORS
+    nbrs = NearestNeighbors(n_neighbors=n_neighbors+1, metric="chebyshev")
+    nbrs.fit(vect_xy)
 
     # Evaluate the distance to the k-nearest neighbor for each point
-    distances, _ = nbrs.kneighbors(XY)
+    distances, _ = nbrs.kneighbors(vect_xy)
     kth_nbr_dist = distances[:, -1]
 
     # Initialize variables to count the number of atoms in neighborhood
     nx = np.array([])
     ny = np.array([])
 
-    # Iterate over all points and make the account
-    for i, p in enumerate(XY):
+    for i, p in enumerate(vect_xy):
         nbr_dist = kth_nbr_dist[i]
         nx_p = 0
         ny_p = 0
-        for q in XY:
+        for q in vect_xy:
             xnorm = np.linalg.norm(np.array(p[:3]) - np.array(q[:3]), ord=np.inf)
             ynorm = np.linalg.norm(np.array(p[3:]) - np.array(q[3:]), ord=np.inf)
             if xnorm < nbr_dist:
@@ -44,36 +53,35 @@ def mi_knn(data, N, M, n_neighbors=3):
         nx = np.append(nx, nx_p)
         ny = np.append(ny, ny_p)
 
-    # Kraskov equation for estimation mutual information
-    mi = base_info_level - np.mean(digamma(nx + 1) + digamma(ny + 1))
+    # Kraskov equation for estimating mutual information
+    mutual_info = base_info - np.mean(digamma(nx + 1) + digamma(ny + 1))
 
-    return max(mi, 0)
+    return max(mutual_info, 0)
 
 
-start_time = time.time()
+@timeit
+def main():
+    """Fuction to compute correlation matrix using k-nearest neighbor method"""
 
-# Load original data
-data = np.load('trj_displacement.npy')
-nframes = data.shape[0] # Number of frames
-natoms = data.shape[1] # Number of atoms
+    data = np.load(INPUT_PATH)
 
-# Parameter of k-nearest neighbor
-k = int(3)
+    num_frames = data.shape[0]
+    num_atoms = data.shape[1]
 
-base_info_level = digamma(nframes) + digamma(k)
+    base_info = digamma(num_frames) + digamma(NUM_NEIGHBORS)
 
-# Initialize correlation matrix
-corr_matrix = np.zeros((natoms, natoms))
+    corr_matrix = np.zeros((num_atoms, num_atoms))
 
-# Evaluate matrix pair by pair
-for N in range(natoms):
-    for M in range(N):  # Inferior diagonal matrix
-        corr_matrix[N, M] = mi_knn(data, N, M, n_neighbors=k)
+    for row in range(num_atoms):
+        # Compute only inferior diagonal matrix
+        for col in range(row):
+            corr_matrix[row, col] = mi_knn(data, row, col, base_info)
 
-# Apply generalized correlation coeficient
-corr_matrix = (1. - np.exp(-2. / 3.  * corr_matrix)) ** 0.5
+    # Generalized correlation coeficient
+    corr_matrix = (1.0 - np.exp(-2.0 / 3.0 * corr_matrix)) ** 0.5
 
-# Save matrix on .npy file
-np.save('vect_knn_matrix.npy', corr_matrix)
+    np.save(file=OUTPUT_PATH, arr=corr_matrix)
 
-print('Seconds: ', time.time() - start_time)
+
+if __name__ == "__main__":
+    main()

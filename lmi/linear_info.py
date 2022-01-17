@@ -1,23 +1,30 @@
 #!/usr/bin/env python
+
+"""
+Module to evaluate the correlation matrix of the trajectory of a protein using
+the linear mutual information
+"""
+
 import sys
-import time
 import numpy as np
+from utils import timeit
+
+INPUT_PATH = str(sys.argv[1])
+OUTPUT_PATH = f"./corr_matrix_{sys.argv[0][2:-3]}.npy"
 
 
-def frame(t, X):
-    """ Returns the matrix X*X.T for a frame at time t """
-    time = np.reshape(X[t], (X.shape[1], 1))
+def frame_eval(time, frame):
+    """Returns the matrix frame*frame.T for a frame at time t"""
+    time_frame = np.reshape(frame[time], (frame.shape[1], 1))
 
-    return np.matmul(time, time.T)
+    return np.matmul(time_frame, time_frame.T)
 
 
+@timeit
 def main():
-    """ Fuction to compute correlation matrix using Linear Mutual Information  method """
+    """Fuction to compute correlation matrix using Linear Mutual Information method"""
 
-    start_time = time.time()
-
-    data_path = str(sys.argv[1])
-    data = np.load(data_path)
+    data = np.load(INPUT_PATH)
 
     # Number of frames or conformations
     nframes = data.shape[0]
@@ -26,44 +33,41 @@ def main():
 
     corr_matrix = np.zeros((natoms, natoms))
 
-    for N in range(natoms):
+    for row in range(natoms):
         # Compute only diagonal inferior matrix
-        for M in range(N):
+        for col in range(row):
             # Variables with all conformations of a pair of atoms
-            X = data[:, N]
-            Y = data[:, M]
-
-            alt_xy = np.array([np.concatenate((X[i], Y[i])) for i in range(len(X))])
-
-            # Evaluate correlation matrix
-            A = frame(0, X)
-            B = frame(0, Y)
-            C = frame(0, alt_xy)
-
-            for i in range(1, nframes):
-                A = A + frame(i, X)
-                B = B + frame(i, Y)
-                C = C + frame(i, alt_xy)
-
-            Ci = A / nframes
-            Cj = B / nframes
-            Cij = C / nframes
-
-            # Equation for Linear Mutual Information
-            LMI = 0.5 * (
-                np.log(np.linalg.det(Ci))
-                + np.log(np.linalg.det(Cj))
-                - np.log(np.linalg.det(Cij))
+            vect_x = data[:, row]
+            vect_y = data[:, col]
+            alt_xy = np.array(
+                [np.concatenate((vect_x[i], vect_y[i])) for i in range(len(vect_x))]
             )
 
-            # Generalized Correlation Coeficient
-            r = (abs(1 - np.exp((-2 * LMI) / 3))) ** 0.5
+            # Evaluate correlation matrix
+            c_i, c_j, c_ij = 0, 0, 0
 
-            corr_matrix[N, M] = r
+            for i in range(nframes):
+                c_i += frame_eval(i, vect_x)
+                c_j += frame_eval(i, vect_y)
+                c_ij += frame_eval(i, alt_xy)
 
-    np.save("corr_matrix_linear_info.npy", corr_matrix)
+            c_i = c_i / nframes
+            c_j = c_j / nframes
+            c_ij = c_ij / nframes
 
-    print("--- %s seconds ---" % (time.time() - start_time))
+            # Equation for Linear Mutual Information
+            lmi = 0.5 * (
+                np.log(np.linalg.det(c_i))
+                + np.log(np.linalg.det(c_j))
+                - np.log(np.linalg.det(c_ij))
+            )
+
+            # Generalized correlation coeficient
+            corr = (abs(1 - np.exp((-2 * lmi) / 3))) ** 0.5
+
+            corr_matrix[row, col] = corr
+
+    np.save(file=OUTPUT_PATH, arr=corr_matrix)
 
 
 if __name__ == "__main__":

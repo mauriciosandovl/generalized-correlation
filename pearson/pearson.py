@@ -1,45 +1,50 @@
 #!/usr/bin/env python
+
+"""
+Module to evaluate the correlation matrix of the trajectory of a protein using
+the Pearson correlation coeficient
+"""
+
 import sys
-import time
 import numpy as np
+from utils import timeit
+
+INPUT_PATH = str(sys.argv[1])
+OUTPUT_PATH = f"./corr_matrix_{sys.argv[0][2:-3]}.npy"
 
 
+@timeit
 def main():
-    """ Fuction to compute correlation matrix using Pearson method """
-    start_time = time.time()
+    """Fuction to compute correlation matrix using Pearson method"""
 
-    data_path = str(sys.argv[1])
-    data = np.load(data_path)
+    data = np.load(INPUT_PATH)
 
-    # Number of frames or conformations
-    nframes = data.shape[0]
     # Number of atoms
     natoms = data.shape[1]
 
     corr_matrix = np.zeros((natoms, natoms))
 
-    for N in range(natoms):
+    for row in range(natoms):
         # Compute only diagonal inferior matrix
-        for M in range(N):
+        for col in range(row):
             # Variables with all conformations of a pair of atoms
-            X = data[:, N]
-            Y = data[:, M]
+            vect_x = data[:, row]
+            vect_y = data[:, col]
 
             # Mean vectors from the total of frames
-            XY = np.diag(np.inner(X, Y))
-            XX = np.diag(np.inner(X, X))
-            YY = np.diag(np.inner(Y, Y))
+            inner_xy = np.diag(np.inner(vect_x, vect_y))
+            inner_xx = np.diag(np.inner(vect_x, vect_x))
+            inner_yy = np.diag(np.inner(vect_y, vect_y))
 
             # Pearson correlation coeficient
-            r = np.mean(XY) / (np.sqrt(np.mean(XX)) * np.sqrt(np.mean(YY)))
+            corr = np.mean(inner_xy) / (
+                np.sqrt(np.mean(inner_xx)) * np.sqrt(np.mean(inner_yy))
+            )
 
-            corr_matrix[N, M] = abs(r)
+            corr_matrix[row, col] = abs(corr)
 
-    np.save("./corr_matrix_pearson.npy", corr_matrix)
-
-    print("--- %s seconds ---" % (time.time() - start_time))
+    np.save(file=OUTPUT_PATH, arr=corr_matrix)
 
 
 if __name__ == "__main__":
     main()
-

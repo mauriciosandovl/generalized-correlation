@@ -1,20 +1,23 @@
 #!/usr/bin/env python
-import time
+
+"""
+Module to evaluate the correlation matrix of the 1-dimensional trajectory of a
+protein using the k-nearest neighbor method
+"""
+
+import sys
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.special import digamma
-from sklearn.neighbors import NearestNeighbors, KDTree, KernelDensity
+from sklearn.neighbors import NearestNeighbors
+from utils import timeit, get_norm
 
-def get_norm(x):
-    """ Función devuelve la norma euclidiana de la posición de los átomos"""
-    norm = np.array([np.linalg.norm(i) for j in x for i in j])
-    norm = norm.reshape((x.shape[0], x.shape[1], 1))
-
-    return norm
+NUM_NEIGHBORS = int(3)
+INPUT_PATH = str(sys.argv[1])
+OUTPUT_PATH = f"./corr_matrix_{sys.argv[0][2:-3]}.npy"
 
 
 def mi_knn(data, N, M, n_neighbors=3):
-    """ 
+    """
     Realiza la estimacion de la informacion mutua a partir del conteo del numero
     de atomos nx y ny en la vecindad del k-esimo vecino mas cercano descrito en
     Kraskov
@@ -24,8 +27,8 @@ def mi_knn(data, N, M, n_neighbors=3):
     XY = np.hstack((X, Y))
 
     # Definimos el modelo de knn y ajustamos los datos. En este caso,
-    # la metrica de Chebyshev corresponde la norma infinito 
-    nbrs = NearestNeighbors(n_neighbors=n_neighbors+1, metric='chebyshev')
+    # la metrica de Chebyshev corresponde la norma infinito
+    nbrs = NearestNeighbors(n_neighbors=n_neighbors + 1, metric="chebyshev")
     nbrs.fit(XY)
 
     # Calculamos la distancia al k-esimo vecino mas proximo para cada punto
@@ -52,18 +55,21 @@ def mi_knn(data, N, M, n_neighbors=3):
         ny = np.append(ny, ny_p)
 
     # Ecuación 8 de Kraskov para estimar la informacion mutua
-    mi = (digamma(n_neighbors) - np.mean(digamma(nx + 1) + digamma(ny + 1)) +
-         digamma(nframes))
+    mi = (
+        digamma(n_neighbors)
+        - np.mean(digamma(nx + 1) + digamma(ny + 1))
+        + digamma(num_frames)
+    )
 
     return max(mi, 0)
 
 
 def corr_matrix(method):
     # Inicializamos la matriz de correlacion
-    corr_matrix = np.zeros((natoms, natoms))
-    
+    corr_matrix = np.zeros((num_atoms, num_atoms))
+
     # Evaluamos la matrix entrada a entrada
-    for N in range(natoms):
+    for N in range(num_atoms):
         for M in range(N):  # Matriz diagonal inferior
             corr_matrix[N, M] = method(norm_data, N, M, n_neighbors=2)
 
@@ -71,18 +77,18 @@ def corr_matrix(method):
     corr_matrix = (1 - np.exp(-2 * corr_matrix)) ** 0.5
 
     # Guardamos la matriz resultante en un archivo .npy
-    np.save('matrix.npy', corr_matrix)
+    np.save("matrix.npy", corr_matrix)
 
 
 start_time = time.time()
 
 # Carga de los datos originales
-data = np.load('trj_displacement.npy')
+data = np.load("trj_displacement.npy")
 norm_data = get_norm(data)
-nframes = norm_data.shape[0] # Número de frames o conformaciones 
-natoms = norm_data.shape[1] # Número de átomos
+num_frames = norm_data.shape[0]
+num_atoms = norm_data.shape[1]
 
 # Compute correlation matrix
 corr_matrix(mi_knn)
 
-print('Seconds: ', time.time() - start_time)
+print("Seconds: ", time.time() - start_time)
