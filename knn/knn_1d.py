@@ -25,17 +25,14 @@ def main():
     data = np.load(INPUT_PATH)
     data = get_norm(data)
 
-    num_frames = data.shape[0]
     num_atoms = data.shape[1]
-
-    base_info = digamma(num_frames) + digamma(NUM_NEIGHBORS)
 
     corr_matrix = np.zeros((num_atoms, num_atoms))
 
     for row in range(num_atoms):
         # Compute only inferior diagonal matrix
         for col in range(row):
-            corr_matrix[row, col] = mi_knn(data, row, col, base_info, NUM_NEIGHBORS)
+            corr_matrix[row, col] = mi_knn(data, row, col, NUM_NEIGHBORS)
             print(row, col)
 
     corr_matrix = gen_corr_coef(corr_matrix, dim=1)
@@ -43,10 +40,13 @@ def main():
     np.save(file=OUTPUT_PATH, arr=corr_matrix)
 
 
-def mi_knn(data, row, col, base_info, n_neighbors=3):
+def mi_knn(data, row, col, n_neighbors=3):
     """Evaluate the mutual information from the number of atoms nx and ny in the
     neighborhood of the k-nearst neighborhood as developed by Kraskov
     """
+
+    num_frames = data.shape[0]
+
     vect_x = data[:, row]
     vect_y = data[:, col]
     vect_xy = np.hstack((vect_x, vect_y))
@@ -78,6 +78,7 @@ def mi_knn(data, row, col, base_info, n_neighbors=3):
         nbrs_y = np.append(nbrs_y, nbrs_y_p)
 
     # Kraskov equation for estimating mutual information
+    base_info = digamma(num_frames) + digamma(n_neighbors)
     mutual_info = base_info - np.mean(digamma(nbrs_x + 1) + digamma(nbrs_y + 1))
 
     return max(mutual_info, 0)

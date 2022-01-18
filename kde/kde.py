@@ -1,67 +1,84 @@
 #!/usr/bin/env python
-import time
+
+"""
+Module to evaluate the correlation matrix of the trajectory of a protein using
+the kernel density estimation method
+"""
+
+import sys
 import numpy as np
-import matplotlib.pyplot as plt
-from sklearn.neighbors import KDTree, KernelDensity
+from sklearn.neighbors import KernelDensity
+from utils import timeit, gen_corr_coef
 
-def mi_kde_vect(data, N, M):
-    def bw(X, dim):
+INPUT_PATH = str(sys.argv[1])
+OUTPUT_PATH = "./corr_matrix_kde.npy"
+
+
+@timeit
+def main():
+    """Fuction to compute correlation matrix using kernel density estimation method"""
+
+    data = np.load(INPUT_PATH)
+
+    num_atoms = data.shape[1]
+
+    corr_matrix = np.zeros((num_atoms, num_atoms))
+
+    for row in range(num_atoms):
+        # Compute only inferior diagonal matrix
+        for col in range(row):
+            corr_matrix[row, col] = mi_kde(data, row, col)
+            print(row, col, corr_matrix[row, col])
+
+    # Generalized correlation coeficient
+    corr_matrix = gen_corr_coef(corr_matrix)
+
+    np.save(file=OUTPUT_PATH, arr=corr_matrix)
+
+
+def mi_kde(data, row, col):
+    """Evaluate the mutual information by estimating the density of the vectors
+    in the trajectory of the protein
+    """
+
+    def opt_bw(vect):
         """Computes optimal bandwidth"""
+        num_frames = vect.shape[0]
+        dim = vect.shape[1]
         # Interquantile range
-        q75X, q25X = np.percentile(X, [75, 25])
-        iqrX = q75X - q25X
-        # Bandwidth as Silverman
-        mnm = min(np.std(X), iqrX / 1.34)
-        bw = mnm * (4 / (nframes * (dim + 4))) ** (1 / (dim + 4))
-        
-        return bw
-    
-    nframes = data.shape[0] # Número de frames o conformaciones 
-    
-    # Vectores con las 401 configuraciones de los átomos N y M
-    X = data[:, N]
-    Y = data[:, M]
-    XY = np.hstack((X, Y))
+        q75, q25 = np.percentile(vect, [75, 25])
+        iqr = q75 - q25
+        # Bandwidth as Silverman with Steuer modification
+        return min(np.std(vect), iqr / 1.34) * (
+            (4 / (num_frames * (dim + 2))) ** (1 / (dim + 4))
+        )
 
-    # Definimos el modelo y ajustamos a los datos
-    kdeX = KernelDensity(kernel='gaussian', bandwidth=bw(X, 3)).fit(X)
-    kdeY = KernelDensity(kernel='gaussian', bandwidth=bw(Y, 3)).fit(Y)
-    kdeXY = KernelDensity(kernel='gaussian', bandwidth=bw(XY, 6)).fit(XY)
+    num_frames = data.shape[0]
+    dim = data.shape[2]
+
+    vect_x = data[:, row]
+    vect_y = data[:, col]
+    vect_xy = np.hstack((vect_x, vect_y))
+
+    # Define the model and fit data using optimal bandwidth
+    kde_x = KernelDensity(kernel="gaussian", bandwidth=opt_bw(vect_x)).fit(vect_x)
+    kde_y = KernelDensity(kernel="gaussian", bandwidth=opt_bw(vect_y)).fit(vect_y)
+    kde_xy = KernelDensity(kernel="gaussian", bandwidth=opt_bw(vect_xy)).fit(vect_xy)
 
     # Evaluate Mutual Information
-    mi = 0
-    for x1, x2, x3, y1, y2, y3 in XY:
-        px = np.exp(kdeX.score_samples([[x1, x2, x3]]))
-        py = np.exp(kdeY.score_samples([[y1, y2, y3]]))
-        pxy = np.exp(kdeXY.score_samples([[x1, x2, x3, y1, y2, y3]]))
+    mutual_info = 0
+    for val_x, val_y in vect_xy.reshape(num_frames, 2, dim):
+        dens_x = np.exp(kde_x.score_samples([val_x.tolist()]))
+        dens_y = np.exp(kde_y.score_samples([val_y.tolist()]))
+        dens_xy = np.exp(kde_xy.score_samples([val_x.tolist() + val_y.tolist()]))
 
-        mi += pxy * np.log( pxy / ( px * py ) )
-        #mi += (np.log(pxy) - np.log(px) - np.log(py))
+        mutual_info += dens_xy * np.log(dens_xy / (dens_x * dens_y))
+        # mutual_info += (np.log(dens_xy) - np.log(dens_x) - np.log(dens_y))
 
-    mi /= nframes
+    mutual_info /= num_frames
 
-    return max(mi, 0)
+    return max(mutual_info, 0)
 
 
-start_time = time.time()
-
-# Carga de los datos originales
-data = np.load('trj_displacement.npy')
-nframes = data.shape[0] # Número de frames o conformaciones 
-natoms = data.shape[1] # Número de átomos
-
-# Inicializamos la matriz de correlacion
-corr_matrix = np.zeros((natoms, natoms))
-
-# Evaluamos la matrix entrada a entrada
-for N in range(natoms):
-    for M in range(N):  # Matriz diagonal inferior
-        corr_matrix[N, M] = mi_kde_vect(data, N, M)
-
-# Aplicamos el coeficiente de correlacion generalizado de Lange
-corr_matrix = (1 - np.exp(-2 / 3 * corr_matrix)) ** 0.5
-
-# Guardamos la matriz resultante en un archivo .npy
-np.save('vect_kde_matrix.npy', corr_matrix)
-
-print("--- %s seconds ---" % (time.time() - start_time))
+if __name__ == "__main__":
+    main()
