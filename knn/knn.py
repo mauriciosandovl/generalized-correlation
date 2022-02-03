@@ -13,7 +13,7 @@ from utils import timeit, gen_corr_coef
 
 NUM_NEIGHBORS = int(3)
 INPUT_PATH = str(sys.argv[1])
-OUTPUT_PATH = "./corr_matrix_knn.npy"
+OUTPUT_PATH = "../outputs/corr_matrix_knn.npy"
 
 
 @timeit

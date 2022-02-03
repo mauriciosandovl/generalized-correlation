@@ -10,7 +10,7 @@ import numpy as np
 from utils import timeit
 
 INPUT_PATH = str(sys.argv[1])
-OUTPUT_PATH = "./corr_matrix_pearson.npy"
+OUTPUT_PATH = "../outputs/corr_matrix_pearson.npy"
 
 
 @timeit

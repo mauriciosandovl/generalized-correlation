@@ -11,7 +11,7 @@ from sklearn.neighbors import KernelDensity
 from utils import timeit, get_norm, gen_corr_coef
 
 INPUT_PATH = str(sys.argv[1])
-OUTPUT_PATH = "./corr_matrix_kde_1d.npy"
+OUTPUT_PATH = "../outputs/corr_matrix_kde_1d.npy"
 
 
 @timeit
