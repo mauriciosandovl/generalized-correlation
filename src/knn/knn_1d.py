@@ -13,7 +13,7 @@ from utils import timeit, get_norm, gen_corr_coef
 
 NUM_NEIGHBORS = int(2)
 INPUT_PATH = str(sys.argv[1])
-OUTPUT_PATH = "../outputs/corr_matrix_knn_1d.npy"
+OUTPUT_PATH = "/home/mauricio/generalized-correlation/outputs/corr_matrix_knn_1d.npy"
 
 
 @timeit

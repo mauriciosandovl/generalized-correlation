@@ -10,7 +10,7 @@ import numpy as np
 from utils import timeit
 
 INPUT_PATH = str(sys.argv[1])
-OUTPUT_PATH = "../outputs/corr_matrix_pearson.npy"
+OUTPUT_PATH = "/home/mauricio/generalized-correlation/outputs/corr_matrix_pearson.npy"
 
 
 @timeit
@@ -19,7 +19,6 @@ def main():
 
     data = np.load(INPUT_PATH)
 
-    # Number of atoms
     num_atoms = data.shape[1]
 
     corr_matrix = np.zeros((num_atoms, num_atoms))
@@ -27,23 +26,26 @@ def main():
     for row in range(num_atoms):
         # Compute only diagonal inferior matrix
         for col in range(row):
-            # Variables with all conformations of a pair of atoms
-            vect_x = data[:, row]
-            vect_y = data[:, col]
-
-            # Mean vectors from the total of frames
-            inner_xy = np.diag(np.inner(vect_x, vect_y))
-            inner_xx = np.diag(np.inner(vect_x, vect_x))
-            inner_yy = np.diag(np.inner(vect_y, vect_y))
-
-            # Pearson correlation coeficient
-            corr = np.mean(inner_xy) / (
-                np.sqrt(np.mean(inner_xx)) * np.sqrt(np.mean(inner_yy))
-            )
-
-            corr_matrix[row, col] = abs(corr)
+            pearson(data, row, col)
 
     np.save(file=OUTPUT_PATH, arr=corr_matrix)
+
+
+def pearson(data, row, col):
+    """Evaluate the pearson correlation coeficient of a pair of atomns"""
+
+    vect_x = data[:, row]
+    vect_y = data[:, col]
+
+    # Mean vectors from the total of frames
+    inner_xy = np.diag(np.inner(vect_x, vect_y))
+    inner_xx = np.diag(np.inner(vect_x, vect_x))
+    inner_yy = np.diag(np.inner(vect_y, vect_y))
+
+    # Pearson correlation coeficient
+    corr = np.mean(inner_xy) / (np.sqrt(np.mean(inner_xx)) * np.sqrt(np.mean(inner_yy)))
+
+    corr_matrix[row, col] = abs(corr)
 
 
 if __name__ == "__main__":

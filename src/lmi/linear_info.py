@@ -10,7 +10,9 @@ import numpy as np
 from utils import timeit, gen_corr_coef
 
 INPUT_PATH = str(sys.argv[1])
-OUTPUT_PATH = "../outputs/corr_matrix_linear_info.npy"
+OUTPUT_PATH = (
+    "/home/mauricio/generalized-correlation/outputs/corr_matrix_linear_info.npy"
+)
 
 
 @timeit
