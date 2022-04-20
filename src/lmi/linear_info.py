@@ -10,9 +10,7 @@ import numpy as np
 from utils import timeit, gen_corr_coef
 
 INPUT_PATH = str(sys.argv[1])
-OUTPUT_PATH = (
-    "/home/mauricio/generalized-correlation/outputs/corr_matrix_linear_info.npy"
-)
+OUTPUT_PATH = "/home/mauricio/generalized-correlation/outputs/corr_matrix_linear_info.npy"
 
 
 @timeit
@@ -21,34 +19,29 @@ def main():
 
     data = np.load(INPUT_PATH)
 
-    # Number of frames or conformations
-    nframes = data.shape[0]
-    # Number of atoms
-    natoms = data.shape[1]
+    num_frames = data.shape[0]
+    num_atoms = data.shape[1]
 
-    corr_matrix = np.zeros((natoms, natoms))
+    corr_matrix = np.zeros((num_atoms, num_atoms))
 
-    for row in range(natoms):
+    for row in range(num_atoms):
         # Compute only diagonal inferior matrix
         for col in range(row):
-            # Variables with all conformations of a pair of atoms
             vect_x = data[:, row]
             vect_y = data[:, col]
-            alt_xy = np.array(
-                [np.concatenate((vect_x[i], vect_y[i])) for i in range(len(vect_x))]
-            )
+            vect_xy = np.hstack((vect_x, vect_y))
 
             # Evaluate correlation matrix
             c_i, c_j, c_ij = 0, 0, 0
 
-            for i in range(nframes):
+            for i in range(num_frames):
                 c_i += frame_eval(i, vect_x)
                 c_j += frame_eval(i, vect_y)
-                c_ij += frame_eval(i, alt_xy)
+                c_ij += frame_eval(i, vect_xy)
 
-            c_i /= nframes
-            c_j /= nframes
-            c_ij /= nframes
+            c_i /= num_frames
+            c_j /= num_frames
+            c_ij /= num_frames
 
             # Equation for Linear Mutual Information
             lmi = 0.5 * (
